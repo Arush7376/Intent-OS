@@ -1,4 +1,4 @@
-const IntentList = ({ intents }) => {
+const IntentList = ({ intents, selectedIntentId, onSelectIntent }) => {
   if (intents.length === 0) {
     return (
       <div className="w-full max-w-md mx-auto text-center p-6 text-gray-500 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -8,11 +8,17 @@ const IntentList = ({ intents }) => {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4">
+    <div className="w-full space-y-3">
       {intents.map((intent) => (
-        <div 
-          key={intent.id} 
-          className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200"
+        <button
+          type="button"
+          key={intent.id}
+          onClick={() => onSelectIntent(intent)}
+          className={`w-full text-left bg-white p-5 rounded-lg shadow-sm border transition duration-200 ${
+            selectedIntentId === intent.id
+              ? 'border-indigo-500 ring-2 ring-indigo-100'
+              : 'border-gray-100 hover:border-gray-300 hover:shadow-md'
+          }`}
         >
           <div className="flex justify-between items-start mb-2">
             <h3 className="text-lg font-bold text-gray-900">{intent.title}</h3>
@@ -25,7 +31,7 @@ const IntentList = ({ intents }) => {
               {intent.description}
             </p>
           )}
-        </div>
+        </button>
       ))}
     </div>
   );

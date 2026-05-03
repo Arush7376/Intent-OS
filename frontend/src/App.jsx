@@ -8,6 +8,9 @@ function App() {
   const [intents, setIntents] = useState([]);
   const [selectedIntent, setSelectedIntent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generatingIntentId, setGeneratingIntentId] = useState(null);
+  const [taskRefreshKey, setTaskRefreshKey] = useState(0);
+  const [generationNotice, setGenerationNotice] = useState(null);
 
   useEffect(() => {
     fetchIntents();
@@ -27,6 +30,39 @@ function App() {
   const handleIntentCreated = (newIntent) => {
     setIntents((prevIntents) => [newIntent, ...prevIntents]);
     setSelectedIntent(newIntent);
+    setTaskRefreshKey((currentKey) => currentKey + 1);
+    setGenerationNotice({
+      intentId: newIntent.id,
+      message: 'Tasks generated successfully',
+      isError: false,
+    });
+  };
+
+  const handleGenerateTasks = async (intent) => {
+    setGeneratingIntentId(intent.id);
+    setSelectedIntent(intent);
+    setGenerationNotice(null);
+
+    try {
+      const response = await axios.post(
+        `http://localhost:8000/api/intents/${intent.id}/generate-tasks/`
+      );
+      setGenerationNotice({
+        intentId: intent.id,
+        message: response.data.message,
+        isError: false,
+      });
+      setTaskRefreshKey((currentKey) => currentKey + 1);
+    } catch (error) {
+      setGenerationNotice({
+        intentId: intent.id,
+        message: 'Failed to generate tasks. Please try again.',
+        isError: true,
+      });
+      console.error('Error generating tasks:', error);
+    } finally {
+      setGeneratingIntentId(null);
+    }
   };
 
   return (
@@ -50,8 +86,14 @@ function App() {
             intents={intents}
             selectedIntentId={selectedIntent?.id}
             onSelectIntent={setSelectedIntent}
+            onGenerateTasks={handleGenerateTasks}
+            generatingIntentId={generatingIntentId}
           />
-          <TaskPanel intent={selectedIntent} />
+          <TaskPanel
+            intent={selectedIntent}
+            refreshKey={taskRefreshKey}
+            generationNotice={generationNotice}
+          />
         </div>
       )}
     </div>

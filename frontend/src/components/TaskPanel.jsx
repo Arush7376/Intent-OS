@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
-const TaskPanel = ({ intent }) => {
+const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ const TaskPanel = ({ intent }) => {
     }
 
     fetchTasks(intent.id);
-  }, [intent]);
+  }, [intent, refreshKey]);
 
   const fetchTasks = async (intentId) => {
     setLoading(true);
@@ -109,6 +109,18 @@ const TaskPanel = ({ intent }) => {
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium">
           {error}
+        </div>
+      )}
+
+      {generationNotice?.intentId === intent.id && (
+        <div
+          className={`p-3 rounded-lg mb-4 text-sm font-medium ${
+            generationNotice.isError
+              ? 'bg-red-50 text-red-600'
+              : 'bg-emerald-50 text-emerald-700'
+          }`}
+        >
+          {generationNotice.message}
         </div>
       )}
 

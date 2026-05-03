@@ -62,3 +62,52 @@ class TaskApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Task.objects.filter(id=task.id).exists())
+
+    def test_creates_tasks_for_learning_intent(self):
+        response = self.client.post(
+            reverse('intent-list'),
+            {'title': 'Learn Django REST Framework'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        intent = Intent.objects.get(id=response.data['id'])
+        self.assertEqual(
+            list(intent.tasks.order_by('created_at').values_list('title', flat=True)),
+            [
+                'Basics / Introduction',
+                'Core Concepts',
+                'Practice / Exercises',
+                'Projects',
+                'Revision',
+            ],
+        )
+        self.assertEqual(intent.tasks.filter(status=Task.Status.PENDING).count(), 5)
+
+    def test_generate_tasks_endpoint_does_not_duplicate_existing_tasks(self):
+        Task.objects.create(intent=self.intent, title='Existing task')
+
+        response = self.client.post(reverse('intent-generate-tasks', args=[self.intent.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['message'], 'Tasks already exist')
+        self.assertFalse(response.data['generated'])
+        self.assertEqual(self.intent.tasks.count(), 1)
+
+    def test_generate_tasks_endpoint_creates_exam_tasks(self):
+        intent = Intent.objects.create(title='Prepare for civil service exam')
+
+        response = self.client.post(reverse('intent-generate-tasks', args=[intent.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['message'], 'Tasks generated successfully')
+        self.assertEqual(
+            [task['title'] for task in response.data['tasks']],
+            [
+                'Syllabus breakdown',
+                'Daily study plan',
+                'Practice tests',
+                'Revision schedule',
+            ],
+        )
+        self.assertEqual(intent.tasks.count(), 4)

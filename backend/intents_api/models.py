@@ -24,6 +24,7 @@ class Task(models.Model):
         default=Status.PENDING,
     )
     due_date = models.DateField(blank=True, null=True)
+    day_number = models.IntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

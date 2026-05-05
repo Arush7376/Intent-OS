@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Intent, Task
 from .serializers import IntentSerializer, TaskSerializer
-from .services import TaskGenerationService
+from .services import TaskGenerationService, SchedulingService
 
 
 class IntentViewSet(viewsets.ModelViewSet):
@@ -28,6 +28,29 @@ class IntentViewSet(viewsets.ModelViewSet):
                 'tasks': serializer.data,
             },
             status=status.HTTP_201_CREATED if result.generated else status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['post'], url_path='schedule')
+    def schedule(self, request, pk=None):
+        intent = self.get_object()
+        force = request.data.get('force') is True
+        duration = request.data.get('duration')
+        if duration is not None:
+            try:
+                duration = int(duration)
+            except ValueError:
+                duration = None
+
+        result = SchedulingService.schedule_intent_tasks(intent, force=force, duration=duration)
+        serializer = TaskSerializer(result.tasks, many=True)
+
+        return Response(
+            {
+                'message': result.message,
+                'scheduled': result.scheduled,
+                'tasks': serializer.data,
+            },
+            status=status.HTTP_201_CREATED if result.scheduled else status.HTTP_200_OK,
         )
 
 

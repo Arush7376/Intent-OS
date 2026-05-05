@@ -9,6 +9,7 @@ function App() {
   const [selectedIntent, setSelectedIntent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generatingIntentId, setGeneratingIntentId] = useState(null);
+  const [schedulingIntentId, setSchedulingIntentId] = useState(null);
   const [taskRefreshKey, setTaskRefreshKey] = useState(0);
   const [generationNotice, setGenerationNotice] = useState(null);
 
@@ -65,6 +66,33 @@ function App() {
     }
   };
 
+  const handleGenerateSchedule = async (intent) => {
+    setSchedulingIntentId(intent.id);
+    setSelectedIntent(intent);
+    setGenerationNotice(null);
+
+    try {
+      const response = await axios.post(
+        `http://localhost:8000/api/intents/${intent.id}/schedule/`
+      );
+      setGenerationNotice({
+        intentId: intent.id,
+        message: response.data.message,
+        isError: false,
+      });
+      setTaskRefreshKey((currentKey) => currentKey + 1);
+    } catch (error) {
+      setGenerationNotice({
+        intentId: intent.id,
+        message: 'Failed to generate schedule. Please try again.',
+        isError: true,
+      });
+      console.error('Error generating schedule:', error);
+    } finally {
+      setSchedulingIntentId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto text-center mb-10">
@@ -88,6 +116,8 @@ function App() {
             onSelectIntent={setSelectedIntent}
             onGenerateTasks={handleGenerateTasks}
             generatingIntentId={generatingIntentId}
+            onGenerateSchedule={handleGenerateSchedule}
+            schedulingIntentId={schedulingIntentId}
           />
           <TaskPanel
             intent={selectedIntent}

@@ -4,6 +4,8 @@ const IntentList = ({
   onSelectIntent,
   onGenerateTasks,
   generatingIntentId,
+  onGenerateSchedule,
+  schedulingIntentId,
 }) => {
   if (intents.length === 0) {
     return (
@@ -41,14 +43,22 @@ const IntentList = ({
               {intent.description}
             </p>
           )}
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end gap-3">
             <button
               type="button"
               onClick={() => onGenerateTasks(intent)}
-              disabled={generatingIntentId === intent.id}
+              disabled={generatingIntentId === intent.id || schedulingIntentId === intent.id}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generatingIntentId === intent.id ? 'Generating...' : 'Generate Tasks'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onGenerateSchedule(intent)}
+              disabled={generatingIntentId === intent.id || schedulingIntentId === intent.id}
+              className="text-sm font-medium text-purple-600 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {schedulingIntentId === intent.id ? 'Scheduling...' : 'Generate Schedule'}
             </button>
           </div>
         </article>

@@ -99,6 +99,19 @@ const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
     );
   }
 
+  const groupedTasks = tasks.reduce((acc, task) => {
+    const dateKey = task.due_date || 'Unscheduled';
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(task);
+    return acc;
+  }, {});
+
+  const sortedDateKeys = Object.keys(groupedTasks).sort((a, b) => {
+    if (a === 'Unscheduled') return -1;
+    if (b === 'Unscheduled') return 1;
+    return new Date(a) - new Date(b);
+  });
+
   return (
     <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="mb-5">
@@ -148,37 +161,48 @@ const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
           No tasks for this intent yet.
         </div>
       ) : (
-        <ul className="divide-y divide-gray-100">
-          {tasks.map((task) => (
-            <li key={task.id} className="py-3 flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={task.status === 'completed'}
-                onChange={() => handleToggleComplete(task)}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <div className="min-w-0 flex-1">
-                <p
-                  className={`font-medium ${
-                    task.status === 'completed'
-                      ? 'text-gray-400 line-through'
-                      : 'text-gray-900'
-                  }`}
-                >
-                  {task.title}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">{task.status}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDeleteTask(task.id)}
-                className="text-sm font-medium text-red-600 hover:text-red-700"
-              >
-                Delete
-              </button>
-            </li>
+        <div className="space-y-6">
+          {sortedDateKeys.map((dateKey) => (
+            <div key={dateKey}>
+              <h3 className="text-sm font-semibold text-gray-700 bg-gray-50 px-3 py-1 rounded-md mb-2">
+                {dateKey === 'Unscheduled' ? 'Unscheduled Tasks' : new Date(dateKey).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </h3>
+              <ul className="divide-y divide-gray-100">
+                {groupedTasks[dateKey].map((task) => (
+                  <li key={task.id} className="py-3 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={task.status === 'completed'}
+                      onChange={() => handleToggleComplete(task)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`font-medium ${
+                          task.status === 'completed'
+                            ? 'text-gray-400 line-through'
+                            : 'text-gray-900'
+                        }`}
+                      >
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-gray-500 capitalize">
+                        {task.status} {task.day_number ? `• Day ${task.day_number}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );

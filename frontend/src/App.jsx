@@ -5,6 +5,7 @@ import IntentList from './components/IntentList';
 import TaskPanel from './components/TaskPanel';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
+import Analytics from './components/Analytics';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -103,6 +104,10 @@ function App() {
       <main className="flex-1 overflow-y-auto">
         {activeTab === 'dashboard' ? (
           <Dashboard activeTab={activeTab} />
+        ) : activeTab === 'analytics' ? (
+          <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto animate-fade-in">
+            <Analytics />
+          </div>
         ) : (
           <div className="py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto text-center mb-10">

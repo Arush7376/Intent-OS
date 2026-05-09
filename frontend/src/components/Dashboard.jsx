@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Target, CheckCircle2, Clock, ListTodo } from 'lucide-react';
+import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 transition-transform hover:scale-105 duration-200 cursor-default">
@@ -78,7 +78,7 @@ const Dashboard = ({ activeTab }) => {
       
       {/* Stats Overview */}
       {overview && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard 
             title="Total Intents" 
             value={overview.total_intents} 
@@ -98,10 +98,22 @@ const Dashboard = ({ activeTab }) => {
             colorClass="bg-gradient-to-br from-emerald-500 to-emerald-600" 
           />
           <StatCard 
-            title="Completion Rate" 
-            value={`${overview.completion_percentage}%`} 
+            title="Productivity Score" 
+            value={`${overview.productivity_score}%`} 
             icon={Clock} 
             colorClass="bg-gradient-to-br from-purple-500 to-purple-600" 
+          />
+          <StatCard 
+            title="Current Streak" 
+            value={`${overview.current_streak} days`} 
+            icon={Award} 
+            colorClass="bg-gradient-to-br from-orange-500 to-orange-600" 
+          />
+          <StatCard 
+            title="Missed Tasks" 
+            value={overview.missed_tasks_count} 
+            icon={AlertTriangle} 
+            colorClass={overview.missed_tasks_count > 0 ? "bg-gradient-to-br from-red-500 to-red-600" : "bg-gradient-to-br from-gray-400 to-gray-500"} 
           />
         </div>
       )}

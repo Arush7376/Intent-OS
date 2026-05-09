@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, TrendingUp } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   return (
@@ -31,6 +31,17 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         >
           <CheckSquare className="w-5 h-5" />
           <span className="font-medium">Intents</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            activeTab === 'analytics'
+              ? 'bg-indigo-50 text-indigo-700'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <TrendingUp className="w-5 h-5" />
+          <span className="font-medium">Analytics</span>
         </button>
       </nav>
     </div>

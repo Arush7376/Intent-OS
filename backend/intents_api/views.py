@@ -1,11 +1,12 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Intent, Task
-from .serializers import IntentSerializer, TaskSerializer
+from .models import Intent, Task, ActivityLog
+from .serializers import IntentSerializer, TaskSerializer, ActivityLogSerializer
 from .services import TaskGenerationService, SchedulingService
 from django.utils import timezone
 from django.db.models import Count, Q
+from datetime import timedelta
 
 
 class IntentViewSet(viewsets.ModelViewSet):
@@ -75,13 +76,43 @@ class DashboardViewSet(viewsets.ViewSet):
         completed_tasks = Task.objects.filter(status=Task.Status.COMPLETED).count()
         pending_tasks = total_tasks - completed_tasks
         completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
+        
+        today = timezone.localdate()
+        missed_tasks_count = Task.objects.filter(status=Task.Status.PENDING, due_date__lt=today).count()
+        
+        # Streak logic
+        yesterday = today - timedelta(days=1)
+        logs = ActivityLog.objects.filter(event_type=ActivityLog.EventType.TASK_COMPLETED).order_by('-timestamp')
+        dates_with_completion = sorted(list(set([log.timestamp.astimezone(timezone.get_current_timezone()).date() for log in logs])), reverse=True)
+        
+        current_streak = 0
+        if dates_with_completion:
+            current_date_to_check = today
+            if dates_with_completion[0] == today:
+                pass
+            elif dates_with_completion[0] == yesterday:
+                current_date_to_check = yesterday
+            else:
+                dates_with_completion = [] # Streak broken
+                
+            for d in dates_with_completion:
+                if d == current_date_to_check:
+                    current_streak += 1
+                    current_date_to_check -= timedelta(days=1)
+                elif d > current_date_to_check:
+                    continue
+                else:
+                    break
 
         return Response({
             'total_intents': total_intents,
             'total_tasks': total_tasks,
             'completed_tasks': completed_tasks,
             'pending_tasks': pending_tasks,
-            'completion_percentage': completion_percentage
+            'completion_percentage': completion_percentage,
+            'productivity_score': completion_percentage,
+            'current_streak': current_streak,
+            'missed_tasks_count': missed_tasks_count,
         })
 
     @action(detail=False, methods=['get'])
@@ -123,4 +154,115 @@ class DashboardViewSet(viewsets.ViewSet):
             'intents': IntentSerializer(recent_intents, many=True).data,
             'completed_tasks': TaskSerializer(recent_tasks, many=True).data
         })
+
+
+class AnalyticsViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        today = timezone.localdate()
+        total_tasks = Task.objects.count()
+        completed_tasks = Task.objects.filter(status=Task.Status.COMPLETED).count()
+        pending_tasks = total_tasks - completed_tasks
+        completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
+        missed_tasks = Task.objects.filter(status=Task.Status.PENDING, due_date__lt=today).count()
+        
+        streak = self._calculate_streak()
+        
+        return Response({
+            'total_completed': completed_tasks,
+            'total_pending': pending_tasks,
+            'completion_percentage': completion_percentage,
+            'current_streak': streak,
+            'missed_tasks_count': missed_tasks,
+        })
+        
+    def _calculate_streak(self):
+        today = timezone.localdate()
+        yesterday = today - timedelta(days=1)
+        
+        logs = ActivityLog.objects.filter(event_type=ActivityLog.EventType.TASK_COMPLETED).order_by('-timestamp')
+        dates_with_completion = sorted(list(set([log.timestamp.astimezone(timezone.get_current_timezone()).date() for log in logs])), reverse=True)
+        
+        if not dates_with_completion:
+            return 0
+            
+        streak = 0
+        current_date_to_check = today
+        
+        if dates_with_completion[0] == today:
+            pass
+        elif dates_with_completion[0] == yesterday:
+            current_date_to_check = yesterday
+        else:
+            return 0
+            
+        for d in dates_with_completion:
+            if d == current_date_to_check:
+                streak += 1
+                current_date_to_check -= timedelta(days=1)
+            elif d > current_date_to_check:
+                continue
+            else:
+                break
+                
+        return streak
+
+    @action(detail=False, methods=['get'])
+    def daily(self, request):
+        today = timezone.localdate()
+        start_datetime = timezone.now() - timedelta(days=14)
+        
+        logs = ActivityLog.objects.filter(
+            event_type=ActivityLog.EventType.TASK_COMPLETED,
+            timestamp__gte=start_datetime
+        )
+        
+        counts = {}
+        for log in logs:
+            d = log.timestamp.astimezone(timezone.get_current_timezone()).date()
+            counts[d] = counts.get(d, 0) + 1
+            
+        start_date = today - timedelta(days=13)
+        data = []
+        for i in range(14):
+            d = start_date + timedelta(days=i)
+            data.append({
+                'date': d.isoformat(),
+                'count': counts.get(d, 0)
+            })
+            
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def weekly(self, request):
+        today = timezone.localdate()
+        start_datetime = timezone.now() - timedelta(weeks=8)
+        
+        logs = ActivityLog.objects.filter(
+            event_type=ActivityLog.EventType.TASK_COMPLETED,
+            timestamp__gte=start_datetime
+        )
+        
+        counts = {}
+        for log in logs:
+            d = log.timestamp.astimezone(timezone.get_current_timezone()).date()
+            week_start = d - timedelta(days=d.weekday())
+            counts[week_start] = counts.get(week_start, 0) + 1
+            
+        start_of_week = today - timedelta(days=today.weekday())
+        start_date = start_of_week - timedelta(weeks=7)
+        data = []
+        for i in range(8):
+            ws = start_date + timedelta(weeks=i)
+            data.append({
+                'week': ws.isoformat(),
+                'count': counts.get(ws, 0)
+            })
+            
+        return Response(data)
+        
+    @action(detail=False, methods=['get'])
+    def timeline(self, request):
+        logs = ActivityLog.objects.all().select_related('related_intent', 'related_task').order_by('-timestamp')[:50]
+        return Response(ActivityLogSerializer(logs, many=True).data)
 

@@ -6,6 +6,7 @@ import TaskPanel from './components/TaskPanel';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Analytics from './components/Analytics';
+import AdaptationPanel from './components/AdaptationPanel';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -108,6 +109,8 @@ function App() {
           <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto animate-fade-in">
             <Analytics />
           </div>
+        ) : activeTab === 'adaptation' ? (
+          <AdaptationPanel />
         ) : (
           <div className="py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto text-center mb-10">

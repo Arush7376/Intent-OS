@@ -3,8 +3,7 @@ from datetime import date, timedelta
 
 from django.db import transaction
 
-from .models import Intent, Task
-
+from .models import Intent, Task, ActivityLog
 
 @dataclass(frozen=True)
 class TaskGenerationResult:
@@ -151,4 +150,100 @@ class SchedulingService:
             tasks=tasks,
             scheduled=True,
             message='Schedule generated successfully'
+        )
+
+@dataclass(frozen=True)
+class AdaptationResult:
+    rescheduled_count: int
+    workload_limit: int
+    recovery_days_inserted: int
+    message: str
+
+class AdaptationEngine:
+    DEFAULT_LIMIT = 4
+    RECOVERY_LIMIT = 2
+
+    @classmethod
+    def get_status(cls) -> dict:
+        from django.utils import timezone
+        today = timezone.localdate()
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
+        completed_recent = ActivityLog.objects.filter(
+            event_type=ActivityLog.EventType.TASK_COMPLETED,
+            timestamp__gte=seven_days_ago
+        ).count()
+
+        missed_recent = Task.objects.filter(
+            status=Task.Status.PENDING,
+            due_date__lt=today,
+        ).count()
+
+        workload_limit = cls.DEFAULT_LIMIT
+        if completed_recent > 5 and missed_recent == 0:
+            workload_limit = 5
+        elif missed_recent > 3:
+            workload_limit = 3
+
+        return {
+            'workload_limit': workload_limit,
+            'recent_completed': completed_recent,
+            'recent_missed': missed_recent,
+            'needs_recovery': missed_recent > 3,
+            'message': 'Adaptation status generated.'
+        }
+
+    @classmethod
+    def run_adaptation(cls) -> AdaptationResult:
+        from django.utils import timezone
+        today = timezone.localdate()
+
+        status = cls.get_status()
+        workload_limit = status['workload_limit']
+        needs_recovery = status['needs_recovery']
+
+        tasks = list(Task.objects.filter(status=Task.Status.PENDING).order_by('due_date', 'created_at'))
+        
+        overdue_tasks = [t for t in tasks if t.due_date and t.due_date < today]
+        rescheduled_count = len(overdue_tasks)
+
+        future_tasks = [t for t in tasks if t.due_date and t.due_date >= today]
+        unscheduled_tasks = [t for t in tasks if not t.due_date]
+
+        all_tasks = overdue_tasks + future_tasks + unscheduled_tasks
+        
+        tasks_updated = []
+        daily_count = {}
+        
+        recovery_days_inserted = 1 if needs_recovery else 0
+
+        for task in all_tasks:
+            if task in overdue_tasks or not task.due_date:
+                preferred_date = today
+            else:
+                preferred_date = task.due_date
+                
+            assigned_date = preferred_date
+            while True:
+                if needs_recovery and assigned_date == today:
+                    limit = cls.RECOVERY_LIMIT
+                else:
+                    limit = workload_limit
+                    
+                if daily_count.get(assigned_date, 0) < limit:
+                    break
+                assigned_date += timedelta(days=1)
+                
+            task.due_date = assigned_date
+            daily_count[assigned_date] = daily_count.get(assigned_date, 0) + 1
+            tasks_updated.append(task)
+
+        with transaction.atomic():
+            Task.objects.bulk_update(tasks_updated, ['due_date'])
+
+        return AdaptationResult(
+            rescheduled_count=rescheduled_count,
+            workload_limit=workload_limit,
+            recovery_days_inserted=recovery_days_inserted,
+            message='Adaptation run successfully'
         )

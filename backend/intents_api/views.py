@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Intent, Task, ActivityLog
 from .serializers import IntentSerializer, TaskSerializer, ActivityLogSerializer
-from .services import TaskGenerationService, SchedulingService
+from .services import TaskGenerationService, SchedulingService, AdaptationEngine
 from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
@@ -265,4 +265,21 @@ class AnalyticsViewSet(viewsets.ViewSet):
     def timeline(self, request):
         logs = ActivityLog.objects.all().select_related('related_intent', 'related_task').order_by('-timestamp')[:50]
         return Response(ActivityLogSerializer(logs, many=True).data)
+
+class AdaptationViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['post'])
+    def run(self, request):
+        result = AdaptationEngine.run_adaptation()
+        return Response({
+            'message': result.message,
+            'rescheduled_count': result.rescheduled_count,
+            'workload_limit': result.workload_limit,
+            'recovery_days_inserted': result.recovery_days_inserted,
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def status(self, request):
+        status_data = AdaptationEngine.get_status()
+        return Response(status_data)
+
 

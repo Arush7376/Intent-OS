@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle } from 'lucide-react';
+import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle, Zap, ShieldAlert } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 transition-transform hover:scale-105 duration-200 cursor-default">
@@ -20,6 +20,7 @@ const Dashboard = ({ activeTab }) => {
   const [upcomingTasks, setUpcomingTasks] = useState([]);
   const [progress, setProgress] = useState([]);
   const [recent, setRecent] = useState({ intents: [], completed_tasks: [] });
+  const [adaptationStatus, setAdaptationStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,12 +31,13 @@ const Dashboard = ({ activeTab }) => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [overviewRes, todayRes, upcomingRes, progressRes, recentRes] = await Promise.all([
+        const [overviewRes, todayRes, upcomingRes, progressRes, recentRes, adaptationRes] = await Promise.all([
           axios.get('http://localhost:8000/api/dashboard/overview/'),
           axios.get('http://localhost:8000/api/dashboard/today/'),
           axios.get('http://localhost:8000/api/dashboard/upcoming/'),
           axios.get('http://localhost:8000/api/dashboard/progress/'),
-          axios.get('http://localhost:8000/api/dashboard/recent/')
+          axios.get('http://localhost:8000/api/dashboard/recent/'),
+          axios.get('http://localhost:8000/api/adaptation/status/')
         ]);
 
         if (isMounted) {
@@ -44,6 +46,7 @@ const Dashboard = ({ activeTab }) => {
             setUpcomingTasks(upcomingRes.data);
             setProgress(progressRes.data);
             setRecent(recentRes.data);
+            setAdaptationStatus(adaptationRes.data);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -217,6 +220,34 @@ const Dashboard = ({ activeTab }) => {
 
         {/* Sidebar / Recent Activity */}
         <div className="space-y-6">
+          {adaptationStatus && adaptationStatus.needs_recovery && (
+            <div className="bg-amber-50 rounded-xl shadow-sm border border-amber-100 p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">
+                <ShieldAlert className="w-24 h-24 text-amber-500" />
+              </div>
+              <h3 className="text-lg font-bold text-amber-800 mb-2 flex items-center">
+                <ShieldAlert className="w-5 h-5 mr-2" /> Burnout Warning
+              </h3>
+              <p className="text-sm text-amber-700 mb-0 relative z-10">
+                You've missed {adaptationStatus.recent_missed} tasks recently. The Adaptation Engine recommends a recovery day.
+              </p>
+            </div>
+          )}
+
+          {adaptationStatus && !adaptationStatus.needs_recovery && (
+            <div className="bg-indigo-50 rounded-xl shadow-sm border border-indigo-100 p-6 relative overflow-hidden">
+               <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">
+                <Zap className="w-24 h-24 text-indigo-500" />
+              </div>
+              <h3 className="text-lg font-bold text-indigo-800 mb-2 flex items-center">
+                <Zap className="w-5 h-5 mr-2" /> Smart Adjustments
+              </h3>
+              <p className="text-sm text-indigo-700 mb-0 relative z-10">
+                Your daily workload limit is optimally set to {adaptationStatus.workload_limit} tasks. Keep it up!
+              </p>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-6 border-b border-gray-100 pb-4">Recent Activity</h3>
             

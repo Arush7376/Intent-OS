@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Activity, AlertCircle, Zap, CalendarClock, ShieldAlert, CheckCircle } from 'lucide-react';
 
 const AdaptationPanel = () => {
@@ -11,7 +11,7 @@ const AdaptationPanel = () => {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8000/api/adaptation/status/');
+      const response = await api.get('adaptation/status/');
       setStatusData(response.data);
     } catch (error) {
       console.error('Error fetching adaptation status:', error);
@@ -28,7 +28,7 @@ const AdaptationPanel = () => {
     try {
       setRunning(true);
       setRunResult(null);
-      const response = await axios.post('http://localhost:8000/api/adaptation/run/');
+      const response = await api.post('adaptation/run/');
       setRunResult(response.data);
       // Refresh status after running
       await fetchStatus();

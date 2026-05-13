@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const IntentForm = ({ onIntentCreated }) => {
   const [title, setTitle] = useState('');
@@ -15,7 +15,7 @@ const IntentForm = ({ onIntentCreated }) => {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/intents/', {
+      const response = await api.post('intents/', {
         title,
         description
       });

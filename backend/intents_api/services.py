@@ -164,17 +164,19 @@ class AdaptationEngine:
     RECOVERY_LIMIT = 2
 
     @classmethod
-    def get_status(cls) -> dict:
+    def get_status(cls, user) -> dict:
         from django.utils import timezone
         today = timezone.localdate()
         seven_days_ago = timezone.now() - timedelta(days=7)
 
         completed_recent = ActivityLog.objects.filter(
+            related_intent__user=user,
             event_type=ActivityLog.EventType.TASK_COMPLETED,
             timestamp__gte=seven_days_ago
         ).count()
 
         missed_recent = Task.objects.filter(
+            intent__user=user,
             status=Task.Status.PENDING,
             due_date__lt=today,
         ).count()
@@ -194,15 +196,15 @@ class AdaptationEngine:
         }
 
     @classmethod
-    def run_adaptation(cls) -> AdaptationResult:
+    def run_adaptation(cls, user) -> AdaptationResult:
         from django.utils import timezone
         today = timezone.localdate()
 
-        status = cls.get_status()
+        status = cls.get_status(user)
         workload_limit = status['workload_limit']
         needs_recovery = status['needs_recovery']
 
-        tasks = list(Task.objects.filter(status=Task.Status.PENDING).order_by('due_date', 'created_at'))
+        tasks = list(Task.objects.filter(intent__user=user, status=Task.Status.PENDING).order_by('due_date', 'created_at'))
         
         overdue_tasks = [t for t in tasks if t.due_date and t.due_date < today]
         rescheduled_count = len(overdue_tasks)

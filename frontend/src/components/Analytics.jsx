@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { TrendingUp, Activity, CheckCircle, AlertTriangle, Calendar, Award } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:8000/api';

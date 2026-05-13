@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle, Zap, ShieldAlert } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass }) => (
@@ -32,12 +32,12 @@ const Dashboard = ({ activeTab }) => {
       try {
         setLoading(true);
         const [overviewRes, todayRes, upcomingRes, progressRes, recentRes, adaptationRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/dashboard/overview/'),
-          axios.get('http://localhost:8000/api/dashboard/today/'),
-          axios.get('http://localhost:8000/api/dashboard/upcoming/'),
-          axios.get('http://localhost:8000/api/dashboard/progress/'),
-          axios.get('http://localhost:8000/api/dashboard/recent/'),
-          axios.get('http://localhost:8000/api/adaptation/status/')
+          api.get('dashboard/overview/'),
+          api.get('dashboard/today/'),
+          api.get('dashboard/upcoming/'),
+          api.get('dashboard/progress/'),
+          api.get('dashboard/recent/'),
+          api.get('adaptation/status/')
         ]);
 
         if (isMounted) {

@@ -1,7 +1,9 @@
 import React from 'react';
-import { LayoutDashboard, CheckSquare, TrendingUp, Zap } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, TrendingUp, Zap, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
+  const { logout, user } = useAuth();
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-screen sticky top-0 flex-col hidden md:flex">
       <div className="p-6">
@@ -55,6 +57,21 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           <span className="font-medium">Smart Adjustments</span>
         </button>
       </nav>
+      <div className="p-4 border-t border-gray-200">
+        <div className="flex items-center space-x-3 px-4 py-3 mb-2">
+          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+            {user?.username?.charAt(0).toUpperCase()}
+          </div>
+          <span className="font-medium text-gray-700 truncate">{user?.username}</span>
+        </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">Log Out</span>
+        </button>
+      </div>
     </div>
   );
 };

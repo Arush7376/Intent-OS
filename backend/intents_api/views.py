@@ -2,19 +2,36 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Intent, Task, ActivityLog
-from .serializers import IntentSerializer, TaskSerializer, ActivityLogSerializer
+from .serializers import IntentSerializer, TaskSerializer, ActivityLogSerializer, RegisterSerializer, UserSerializer
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .services import TaskGenerationService, SchedulingService, AdaptationEngine
 from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
 
 
+
+class AuthViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def register(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({'message': 'User created successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def profile(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
 class IntentViewSet(viewsets.ModelViewSet):
-    queryset = Intent.objects.all().order_by('-created_at')
+    def get_queryset(self):
+        return Intent.objects.filter(user=self.request.user).order_by('-created_at')
     serializer_class = IntentSerializer
 
     def perform_create(self, serializer):
-        intent = serializer.save()
+        intent = serializer.save(user=self.request.user)
         TaskGenerationService.generate_for_intent(intent)
 
     @action(detail=True, methods=['post'], url_path='generate-tasks')
@@ -61,7 +78,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
 
     def get_queryset(self):
-        queryset = Task.objects.select_related('intent').all().order_by('created_at', 'id')
+        queryset = Task.objects.select_related('intent').filter(intent__user=self.request.user).order_by('created_at', 'id')
         intent_id = self.request.query_params.get('intent_id')
         if intent_id:
             queryset = queryset.filter(intent_id=intent_id)
@@ -71,18 +88,18 @@ class TaskViewSet(viewsets.ModelViewSet):
 class DashboardViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def overview(self, request):
-        total_intents = Intent.objects.count()
-        total_tasks = Task.objects.count()
-        completed_tasks = Task.objects.filter(status=Task.Status.COMPLETED).count()
+        total_intents = Intent.objects.filter(user=request.user).count()
+        total_tasks = Task.objects.filter(intent__user=request.user).count()
+        completed_tasks = Task.objects.filter(intent__user=request.user, status=Task.Status.COMPLETED).count()
         pending_tasks = total_tasks - completed_tasks
         completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
         
         today = timezone.localdate()
-        missed_tasks_count = Task.objects.filter(status=Task.Status.PENDING, due_date__lt=today).count()
+        missed_tasks_count = Task.objects.filter(intent__user=request.user, status=Task.Status.PENDING, due_date__lt=today).count()
         
         # Streak logic
         yesterday = today - timedelta(days=1)
-        logs = ActivityLog.objects.filter(event_type=ActivityLog.EventType.TASK_COMPLETED).order_by('-timestamp')
+        logs = ActivityLog.objects.filter(related_intent__user=request.user, event_type=ActivityLog.EventType.TASK_COMPLETED).order_by('-timestamp')
         dates_with_completion = sorted(list(set([log.timestamp.astimezone(timezone.get_current_timezone()).date() for log in logs])), reverse=True)
         
         current_streak = 0
@@ -118,18 +135,18 @@ class DashboardViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def today(self, request):
         today = timezone.localdate()
-        tasks = Task.objects.select_related('intent').filter(due_date=today).order_by('created_at')
+        tasks = Task.objects.select_related('intent').filter(intent__user=request.user, due_date=today).order_by('created_at')
         return Response(TaskSerializer(tasks, many=True).data)
 
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
         today = timezone.localdate()
-        tasks = Task.objects.select_related('intent').filter(due_date__gt=today).order_by('due_date', 'created_at')
+        tasks = Task.objects.select_related('intent').filter(intent__user=request.user, due_date__gt=today).order_by('due_date', 'created_at')
         return Response(TaskSerializer(tasks, many=True).data)
 
     @action(detail=False, methods=['get'])
     def progress(self, request):
-        intents = Intent.objects.annotate(
+        intents = Intent.objects.filter(user=request.user).annotate(
             total_tasks=Count('tasks'),
             completed_tasks=Count('tasks', filter=Q(tasks__status=Task.Status.COMPLETED))
         ).order_by('-created_at')
@@ -148,8 +165,8 @@ class DashboardViewSet(viewsets.ViewSet):
         
     @action(detail=False, methods=['get'])
     def recent(self, request):
-        recent_intents = Intent.objects.order_by('-created_at')[:5]
-        recent_tasks = Task.objects.filter(status=Task.Status.COMPLETED).select_related('intent').order_by('-created_at')[:5]
+        recent_intents = Intent.objects.filter(user=request.user).order_by('-created_at')[:5]
+        recent_tasks = Task.objects.filter(intent__user=request.user, status=Task.Status.COMPLETED).select_related('intent').order_by('-created_at')[:5]
         return Response({
             'intents': IntentSerializer(recent_intents, many=True).data,
             'completed_tasks': TaskSerializer(recent_tasks, many=True).data
@@ -160,13 +177,13 @@ class AnalyticsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         today = timezone.localdate()
-        total_tasks = Task.objects.count()
-        completed_tasks = Task.objects.filter(status=Task.Status.COMPLETED).count()
+        total_tasks = Task.objects.filter(intent__user=request.user).count()
+        completed_tasks = Task.objects.filter(intent__user=request.user, status=Task.Status.COMPLETED).count()
         pending_tasks = total_tasks - completed_tasks
         completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
-        missed_tasks = Task.objects.filter(status=Task.Status.PENDING, due_date__lt=today).count()
+        missed_tasks = Task.objects.filter(intent__user=request.user, status=Task.Status.PENDING, due_date__lt=today).count()
         
-        streak = self._calculate_streak()
+        streak = self._calculate_streak(request)
         
         return Response({
             'total_completed': completed_tasks,
@@ -180,7 +197,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         today = timezone.localdate()
         yesterday = today - timedelta(days=1)
         
-        logs = ActivityLog.objects.filter(event_type=ActivityLog.EventType.TASK_COMPLETED).order_by('-timestamp')
+        logs = ActivityLog.objects.filter(related_intent__user=request.user, event_type=ActivityLog.EventType.TASK_COMPLETED).order_by('-timestamp')
         dates_with_completion = sorted(list(set([log.timestamp.astimezone(timezone.get_current_timezone()).date() for log in logs])), reverse=True)
         
         if not dates_with_completion:
@@ -213,6 +230,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         start_datetime = timezone.now() - timedelta(days=14)
         
         logs = ActivityLog.objects.filter(
+            related_intent__user=request.user,
             event_type=ActivityLog.EventType.TASK_COMPLETED,
             timestamp__gte=start_datetime
         )
@@ -239,6 +257,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         start_datetime = timezone.now() - timedelta(weeks=8)
         
         logs = ActivityLog.objects.filter(
+            related_intent__user=request.user,
             event_type=ActivityLog.EventType.TASK_COMPLETED,
             timestamp__gte=start_datetime
         )
@@ -263,13 +282,13 @@ class AnalyticsViewSet(viewsets.ViewSet):
         
     @action(detail=False, methods=['get'])
     def timeline(self, request):
-        logs = ActivityLog.objects.all().select_related('related_intent', 'related_task').order_by('-timestamp')[:50]
+        logs = ActivityLog.objects.filter(related_intent__user=request.user).select_related('related_intent', 'related_task').order_by('-timestamp')[:50]
         return Response(ActivityLogSerializer(logs, many=True).data)
 
 class AdaptationViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def run(self, request):
-        result = AdaptationEngine.run_adaptation()
+        result = AdaptationEngine.run_adaptation(request.user)
         return Response({
             'message': result.message,
             'rescheduled_count': result.rescheduled_count,
@@ -279,7 +298,7 @@ class AdaptationViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def status(self, request):
-        status_data = AdaptationEngine.get_status()
+        status_data = AdaptationEngine.get_status(request.user)
         return Response(status_data)
 
 

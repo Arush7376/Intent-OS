@@ -15,4 +15,11 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+export const notificationsAPI = {
+  getAll: () => api.get('notifications/'),
+  markAsRead: (id) => api.patch(`notifications/${id}/read/`),
+  markAllAsRead: () => api.patch('notifications/read-all/'),
+  clearAll: () => api.delete('notifications/clear-all/'),
+};
+
 export default api;

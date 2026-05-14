@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle, Zap, ShieldAlert } from 'lucide-react';
+import api, { notificationsAPI } from '../services/api';
+import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle, Zap, ShieldAlert, BellRing, X } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 transition-transform hover:scale-105 duration-200 cursor-default">
@@ -21,6 +21,7 @@ const Dashboard = ({ activeTab }) => {
   const [progress, setProgress] = useState([]);
   const [recent, setRecent] = useState({ intents: [], completed_tasks: [] });
   const [adaptationStatus, setAdaptationStatus] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +38,8 @@ const Dashboard = ({ activeTab }) => {
           api.get('dashboard/upcoming/'),
           api.get('dashboard/progress/'),
           api.get('dashboard/recent/'),
-          api.get('adaptation/status/')
+          api.get('adaptation/status/'),
+          notificationsAPI.getAll()
         ]);
 
         if (isMounted) {
@@ -47,6 +49,7 @@ const Dashboard = ({ activeTab }) => {
             setProgress(progressRes.data);
             setRecent(recentRes.data);
             setAdaptationStatus(adaptationRes.data);
+            setNotifications(notificationsRes.data.filter(n => !n.is_read));
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -78,6 +81,34 @@ const Dashboard = ({ activeTab }) => {
             <p className="mt-2 text-sm text-gray-500">Monitor your workflows, tasks, and progress.</p>
         </div>
       </div>
+
+      {/* Notifications Banners */}
+      {notifications.length > 0 && (
+        <div className="space-y-3 mb-6">
+          {notifications.slice(0, 3).map(notification => (
+            <div key={notification.id} className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 p-4 rounded-xl shadow-sm flex items-start justify-between">
+              <div className="flex items-start space-x-3">
+                <div className="bg-indigo-100 p-2 rounded-lg mt-0.5">
+                  <BellRing className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">{notification.title}</h4>
+                  <p className="text-sm text-indigo-800 mt-1">{notification.message}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  notificationsAPI.markAsRead(notification.id);
+                  setNotifications(notifications.filter(n => n.id !== notification.id));
+                }}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       
       {/* Stats Overview */}
       {overview && (

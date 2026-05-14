@@ -1,6 +1,19 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Intent, Task, ActivityLog
+from .models import Intent, Task, ActivityLog, Notification
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            'id',
+            'title',
+            'message',
+            'type',
+            'is_read',
+            'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,8 +1,8 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Intent, Task, ActivityLog
-from .serializers import IntentSerializer, TaskSerializer, ActivityLogSerializer, RegisterSerializer, UserSerializer
+from .models import Intent, Task, ActivityLog, Notification
+from .serializers import IntentSerializer, TaskSerializer, ActivityLogSerializer, RegisterSerializer, UserSerializer, NotificationSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .services import TaskGenerationService, SchedulingService, AdaptationEngine
 from django.utils import timezone
@@ -300,5 +300,29 @@ class AdaptationViewSet(viewsets.ViewSet):
     def status(self, request):
         status_data = AdaptationEngine.get_status(request.user)
         return Response(status_data)
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+    @action(detail=True, methods=['patch'], url_path='read')
+    def mark_as_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'status': 'Notification marked as read'})
+
+    @action(detail=False, methods=['patch'], url_path='read-all')
+    def mark_all_as_read(self, request):
+        self.get_queryset().update(is_read=True)
+        return Response({'status': 'All notifications marked as read'})
+
+    @action(detail=False, methods=['delete'], url_path='clear-all')
+    def clear_all(self, request):
+        self.get_queryset().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 

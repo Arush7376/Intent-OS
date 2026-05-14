@@ -75,3 +75,22 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()} at {self.timestamp}"
+
+
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        TASK_DUE = 'task_due', 'Task Due Today'
+        TASK_OVERDUE = 'task_overdue', 'Task Overdue'
+        ADAPTATION_UPDATE = 'adaptation_update', 'Adaptation Update'
+        STREAK_ALERT = 'streak_alert', 'Streak Alert'
+        DAILY_SUMMARY = 'daily_summary', 'Daily Summary'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    type = models.CharField(max_length=50, choices=NotificationType.choices)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.user.username}"

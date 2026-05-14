@@ -19,10 +19,10 @@ export default function Analytics() {
     try {
       setLoading(true);
       const [summaryRes, dailyRes, weeklyRes, timelineRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/analytics/summary/`),
-        axios.get(`${API_BASE_URL}/analytics/daily/`),
-        axios.get(`${API_BASE_URL}/analytics/weekly/`),
-        axios.get(`${API_BASE_URL}/analytics/timeline/`)
+        api.get(`analytics/summary/`),
+        api.get(`analytics/daily/`),
+        api.get(`analytics/weekly/`),
+        api.get(`analytics/timeline/`)
       ]);
       
       setSummary(summaryRes.data);

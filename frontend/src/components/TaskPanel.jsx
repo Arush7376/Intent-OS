@@ -26,7 +26,7 @@ const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
     setError(null);
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/tasks/?intent_id=${intentId}`);
+      const response = await api.get(`tasks/?intent_id=${intentId}`);
       setTasks(response.data);
     } catch (err) {
       setError('Failed to load tasks. Please try again.');
@@ -49,7 +49,7 @@ const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
     setError(null);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/tasks/`, {
+      const response = await api.post(`tasks/`, {
         intent: intent.id,
         title: trimmedTitle,
       });
@@ -67,7 +67,7 @@ const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
     const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
 
     try {
-      const response = await axios.patch(`${API_BASE_URL}/tasks/${task.id}/`, {
+      const response = await api.patch(`tasks/${task.id}/`, {
         status: nextStatus,
       });
       setTasks((currentTasks) =>
@@ -83,7 +83,7 @@ const TaskPanel = ({ intent, refreshKey, generationNotice }) => {
 
   const handleDeleteTask = async (taskId) => {
     try {
-      await axios.delete(`${API_BASE_URL}/tasks/${taskId}/`);
+      await api.delete(`tasks/${taskId}/`);
       setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId));
     } catch (err) {
       setError('Failed to delete task. Please try again.');

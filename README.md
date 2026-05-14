@@ -55,6 +55,12 @@ Welcome developers! Here is how to get the project running locally.
 - Integrated `lucide-react` for polished iconography.
 - Refactored frontend navigation to use a sidebar with state-based tab switching.
 
+### Module 9: Notification & Reminder System
+- Added `Notification` model to track task reminders, overdue alerts, and daily summaries.
+- Created `generate_notifications` Django management command for scheduled generation of alerts.
+- Built a global `NotificationPanel` component in React to view, mark read, and clear alerts.
+- Integrated notifications directly into the main application layout and as actionable banners on the Dashboard.
+
 ## Current API Surface
 
 **Intents & Tasks**

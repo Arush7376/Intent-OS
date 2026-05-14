@@ -7,6 +7,7 @@ import Sidebar from '../components/Sidebar';
 import Dashboard from '../components/Dashboard';
 import Analytics from '../components/Analytics';
 import AdaptationPanel from '../components/AdaptationPanel';
+import NotificationPanel from '../components/NotificationPanel';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MainApp() {
@@ -100,8 +101,13 @@ export default function MainApp() {
     <div className="flex bg-gray-50 min-h-screen">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="flex-1 overflow-y-auto">
-        {activeTab === 'dashboard' ? (
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-end px-6 flex-shrink-0 z-10">
+          <NotificationPanel />
+        </header>
+        
+        <div className="flex-1 overflow-y-auto relative">
+          {activeTab === 'dashboard' ? (
           <Dashboard activeTab={activeTab} />
         ) : activeTab === 'analytics' ? (
           <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto animate-fade-in">
@@ -144,6 +150,7 @@ export default function MainApp() {
             )}
           </div>
         )}
+        </div>
       </main>
     </div>
   );

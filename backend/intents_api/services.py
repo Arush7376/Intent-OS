@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 from django.db import transaction
 
-from .models import Intent, Task, ActivityLog
+from .models import Intent, Task, ActivityLog, Notification
 
 @dataclass(frozen=True)
 class TaskGenerationResult:
@@ -242,6 +242,18 @@ class AdaptationEngine:
 
         with transaction.atomic():
             Task.objects.bulk_update(tasks_updated, ['due_date'])
+            
+            if rescheduled_count > 0 or recovery_days_inserted > 0:
+                message = f"We adapted your schedule! {rescheduled_count} tasks were moved."
+                if recovery_days_inserted > 0:
+                    message += " Added some recovery time since you've missed a few."
+                
+                Notification.objects.create(
+                    user=user,
+                    title="Schedule Adjusted",
+                    message=message,
+                    type=Notification.NotificationType.ADAPTATION_UPDATE
+                )
 
         return AdaptationResult(
             rescheduled_count=rescheduled_count,
@@ -249,3 +261,4 @@ class AdaptationEngine:
             recovery_days_inserted=recovery_days_inserted,
             message='Adaptation run successfully'
         )
+

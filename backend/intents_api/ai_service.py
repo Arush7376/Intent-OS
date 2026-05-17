@@ -11,7 +11,7 @@ class AIService:
             self.model = None
         else:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
 
     def _check_client(self):
         if not self.model:

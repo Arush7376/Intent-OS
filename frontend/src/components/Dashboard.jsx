@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api, { notificationsAPI } from '../services/api';
 import { Target, CheckCircle2, Clock, ListTodo, Award, AlertTriangle, Zap, ShieldAlert, BellRing, X } from 'lucide-react';
+import RecommendationPanel from './RecommendationPanel';
 
 const StatCard = ({ title, value, icon: Icon, colorClass }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 transition-transform hover:scale-105 duration-200 cursor-default">
@@ -251,6 +252,8 @@ const Dashboard = ({ activeTab }) => {
 
         {/* Sidebar / Recent Activity */}
         <div className="space-y-6">
+          <RecommendationPanel />
+          
           {adaptationStatus && adaptationStatus.needs_recovery && (
             <div className="bg-amber-50 rounded-xl shadow-sm border border-amber-100 p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">

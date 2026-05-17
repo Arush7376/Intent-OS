@@ -8,6 +8,59 @@ from .services import TaskGenerationService, SchedulingService, AdaptationEngine
 from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
+from .ai_service import ai_service
+
+
+class AIEngineViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['post'], url_path='analyze-intent')
+    def analyze_intent(self, request):
+        text = request.data.get('text')
+        if not text:
+            return Response({'error': 'text is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            result = ai_service.analyze_intent(text)
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], url_path='generate-workflow')
+    def generate_workflow(self, request):
+        intent_data = request.data.get('intent_data')
+        text = request.data.get('text')
+        if not intent_data or not text:
+            return Response({'error': 'intent_data and text are required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            result = ai_service.generate_workflow(intent_data, text)
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='recommendations')
+    def recommendations(self, request):
+        try:
+            # Gather user stats for context
+            today = timezone.localdate()
+            total_tasks = Task.objects.filter(intent__user=request.user).count()
+            completed_tasks = Task.objects.filter(intent__user=request.user, status=Task.Status.COMPLETED).count()
+            missed_tasks = Task.objects.filter(intent__user=request.user, status=Task.Status.PENDING, due_date__lt=today).count()
+            
+            # Additional recent activity can be useful too
+            recent_completed = ActivityLog.objects.filter(
+                related_intent__user=request.user,
+                event_type=ActivityLog.EventType.TASK_COMPLETED,
+                timestamp__gte=timezone.now() - timedelta(days=7)
+            ).count()
+
+            stats = {
+                'total_tasks': total_tasks,
+                'completed_tasks': completed_tasks,
+                'missed_tasks': missed_tasks,
+                'completed_in_last_7_days': recent_completed,
+            }
+            result = ai_service.get_recommendations(stats)
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -32,7 +85,20 @@ class IntentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         intent = serializer.save(user=self.request.user)
-        TaskGenerationService.generate_for_intent(intent)
+        
+        ai_tasks = self.request.data.get('ai_tasks')
+        if ai_tasks and isinstance(ai_tasks, list):
+            from .models import Task
+            tasks_to_create = []
+            for task_data in ai_tasks:
+                tasks_to_create.append(Task(
+                    intent=intent,
+                    title=task_data.get('title'),
+                    description=task_data.get('description', '')
+                ))
+            Task.objects.bulk_create(tasks_to_create)
+        else:
+            TaskGenerationService.generate_for_intent(intent)
 
     @action(detail=True, methods=['post'], url_path='generate-tasks')
     def generate_tasks(self, request, pk=None):
